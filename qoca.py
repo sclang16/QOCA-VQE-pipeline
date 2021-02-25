@@ -1,9 +1,5 @@
 from typing import Optional, Union, List, Tuple
-import sys
-import collections
-import copy
 
-import numpy as np
 from qiskit import QuantumRegister, QuantumCircuit
 from qiskit.circuit import Gate
 from qiskit.circuit.library import RZGate, RXGate, CXGate, HGate
@@ -15,7 +11,7 @@ from qiskit.aqua.operators import WeightedPauliOperator, Z2Symmetries
 from qiskit.aqua.components.variational_forms import VariationalForm
 from qiskit.chemistry.fermionic_operator import FermionicOperator
 
-# Define gates not native to Qiskit (G, ZY, ZX) needed for drive Hamiltonian
+# Define gates not native to Qiskit (G, ZY, ZX) needed for drive hamiltonian
 class GGate(Gate):
     def __init__(self, label = None):
         super().__init__('g',1,[],label=label)
@@ -39,6 +35,7 @@ class ZYGate(Gate):
 
     def _define(self):
         q = QuantumRegister(2,'q')
+        theta = self.params[0]
         qc = QuantumCircuit(q,name=self.name)
 
         rules = [
@@ -59,6 +56,7 @@ class ZXGate(Gate):
 
     def _define(self):
         q = QuantumRegister(2,'q')
+        theta = self.params[0]
         qc = QuantumCircuit(q,name=self.name)
 
         rules = [
@@ -73,30 +71,35 @@ class ZXGate(Gate):
 
         self.definition = qc
 
-# gate tests
+class QOCA(VariationalForm):
+    def __init__(self, num_qubits: Optional[int] = None, reps: int = 1; initial_state: Optional[InitialState] = None) -> None:
+        super().__init__()
 
-qc = QuantumCircuit(1, name = 'G')
-qc.rz(pi,0)
-qc.rx(pi/2,0)
-g_gate = qc.to_gate([],'G')
+        self._num_qubits = num_qubits
+        self._reps = reps
+        self._initial_state = initial_state
 
-"""
-    qc = QuantumCircuit(2, name = "ZY")
-    qc.append(g_gate,[1])
-    qc.cx(0,1)
-    qc.rz(theta, 1)
-    qc.cx(0,1)
-    qc.append(g_gate,[1])
-    zy_gate = qc.to_gate([theta],"ZY")
+    @property    
+    def num_qubits(self) -> int:
+        
+        return self._num_qubits
 
-    qc = QuantumCircuit(2, name = "ZX")
-    qc.h(1)
-    qc.cx(0,1)
-    qc.rz(theta, 1)
-    qc.cx(0,1)
-    qc.h(1)
-    zx_gate = qc.to_gate([theta],"ZX")
-"""
-tc = QuantumCircuit(2)
-tc.append(g_gate,[0])
-tc.draw()
+    @num_qubits.settter
+    def num_qubits(self, num_qubits: int) -> None:
+        
+        self._num_qubits = num_qubits
+
+    def construct_circuit(self, parameters: List[Parameter], q: Optional[QuantumRegister] = None) -> QuantumCircuit:
+
+        if q is None:
+            q = QuantumRegister(self._num_qubits,name='q')
+        
+        circuit = QuantumCircuit(q)
+
+        circuit.ry(,0)
+        circuit.rx(,0)
+
+        for nq in self._num_qubits:
+            
+
+        return circuit
