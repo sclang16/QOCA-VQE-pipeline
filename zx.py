@@ -12,6 +12,7 @@ class ZXGate(Gate):
 
     def _define(self):
         q = QuantumRegister(2,'q')
+        theta = self.params[0]
         qc = QuantumCircuit(q,name=self.name)
 
         rules = [

@@ -3,7 +3,7 @@
 import numpy as np
 from qiskit import QuantumRegister, QuantumCircuit
 from qiskit.circuit import Gate
-from qiskit.circuit.library import RZGate, RXGate
+from qiskit.circuit.library import U2Gate
 from qiskit.qasm import pi
 
 class GGate(Gate):
@@ -15,8 +15,7 @@ class GGate(Gate):
         qc = QuantumCircuit(q,name=self.name)
 
         rules = [
-            (RZGate(pi),[q[0]],[]),
-            (RXGate(pi/2),[q[0]],[])
+            (U2Gate(pi/2,pi/2),[q[0]],[])
         ]
         for instr, qargs, cargs in rules:
             qc._append(instr, qargs, cargs)

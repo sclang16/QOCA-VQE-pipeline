@@ -6,7 +6,7 @@ from qiskit.circuit import Gate
 from qiskit.circuit.library import RZGate, CXGate
 from qiskit.qasm import pi
 
-# import GGate
+from g import GGate
 
 class ZYGate(Gate):
     def __init__(self, theta, label = None):
@@ -14,6 +14,7 @@ class ZYGate(Gate):
 
     def _define(self):
         q = QuantumRegister(2,'q')
+        theta = self.params[0]
         qc = QuantumCircuit(q,name=self.name)
 
         rules = [
