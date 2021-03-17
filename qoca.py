@@ -15,17 +15,24 @@ from zx import ZXGate
 from zy import ZYGate
 
 class QOCA(VariationalForm):
-    def __init__(self, num_qubits: Optional[int] = 4, reps: int = 1, initial_state: Optional[InitialState] = Zero) -> None:
+    def __init__(self,
+        num_qubits: Optional[int] = 4,
+        reps: int = 1,
+        initial_state: Optional[InitialState] = Zero,
+        qubit_mapping: str = 'parity') -> None:
+        
         super().__init__()
 
         self._num_qubits = num_qubits
-        #self._num_particles = num_particles
-        #self._num_spin_orbitals = num_spin_orbitals
         self._reps = reps
         self._initial_state = initial_state
         self._support_parameterized_circuit = True
 
-        self._num_parameters = 2 * self._num_qubits
+        self._num_parameters = 2 * self._num_qubits * self._reps
+        self.parameters = []
+        [self.parameters.append(0) for i in range(self._num_parameters)]
+        parameters = self.parameters
+
 
         # Qubit mapping requirements?
         # How to get num_qubits, since it likely will depend on H^?
@@ -40,14 +47,14 @@ class QOCA(VariationalForm):
         
         self._num_qubits = num_qubits
 
-    def add_drive_layer(self, circuit: QuantumCircuit, layer_parameters: List[Parameter]):
+    def add_drive_layer(self, circuit: QuantumCircuit, layer_params: List[Parameter]):
         
-        circuit.ry(layer_parameters[0],0)
-        circuit.rx(layer_parameters[1],0)
+        circuit.ry(layer_params[0],0)
+        circuit.rx(layer_params[1],0)
 
         for i in range(self._num_qubits-1):
-            circuit.append(ZYGate(layer_parameters[(2*i)+2]),[i,i+1],[])
-            circuit.append(ZXGate(layer_parameters[(2*i)+3]),[i,i+1],[])
+            circuit.append(ZYGate(layer_params[(2*i)+2]),[i,i+1],[])
+            circuit.append(ZXGate(layer_params[(2*i)+3]),[i,i+1],[])
             circuit.cx(i,i+1)
         
         for i in range(self._num_qubits-2, 0, -1):
@@ -64,10 +71,11 @@ class QOCA(VariationalForm):
 
         if parameters is None:
             parameters = []
-            [parameters.append(0) for i in range(self._num_parameters*self._reps)]
+            [parameters.append(0) for i in range(self._num_parameters)]
 
         for layer in range(self._reps):
-            layer_params = parameters[(layer*self._num_parameters):((layer+1)*self._num_parameters)]
+            layer_end_index = int(self._num_parameters/self._reps)
+            layer_params = parameters[(layer*layer_end_index):((layer+1)*layer_end_index)]
             self.add_drive_layer(circuit, layer_params)
 
         return circuit
