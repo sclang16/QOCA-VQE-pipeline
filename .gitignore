@@ -1,2 +1,3 @@
 
 .ipynb_checkpoints/VQE Pipeline-checkpoint.ipynb
+*.pyc

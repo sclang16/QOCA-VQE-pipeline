@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Tuple
+from typing import Optional, List
 
 from qiskit import QuantumRegister, QuantumCircuit
 from qiskit.circuit import Gate, Parameter
@@ -6,13 +6,16 @@ from qiskit.qasm import pi
 
 from qiskit.aqua import aqua_globals
 from qiskit.aqua.components.initial_states import InitialState, Zero
-from qiskit.aqua.operators import WeightedPauliOperator, Z2Symmetries
 from qiskit.aqua.components.variational_forms import VariationalForm
+
 from qiskit.chemistry.fermionic_operator import FermionicOperator
+from qiskit.aqua.operators import WeightedPauliOperator, Z2Symmetries
 
 from g import GGate
 from zx import ZXGate
 from zy import ZYGate
+
+import numpy as np
 
 class QOCA(VariationalForm):
     def __init__(self,
@@ -32,6 +35,7 @@ class QOCA(VariationalForm):
         self.parameters = []
         [self.parameters.append(0) for i in range(self._num_parameters)]
         parameters = self.parameters
+        self._bounds = [(-np.pi, np.pi) for _ in range(self._num_parameters)]
 
 
         # Qubit mapping requirements?
@@ -39,14 +43,6 @@ class QOCA(VariationalForm):
         # What is being treated as H^?
         # Pick operator evolution for H^ (likely MatrixEvolution) - in constructor or subfunction?
     
-    def num_qubits(self) -> int:
-        
-        return self._num_qubits
-
-    def num_qubits(self, num_qubits: int) -> None:
-        
-        self._num_qubits = num_qubits
-
     def add_drive_layer(self, circuit: QuantumCircuit, layer_params: List[Parameter]):
         
         circuit.ry(layer_params[0],0)
