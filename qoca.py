@@ -3,15 +3,13 @@ from typing import Optional, List
 from qiskit import QuantumRegister, QuantumCircuit
 from qiskit.circuit import Gate, Parameter
 from qiskit.qasm import pi
-from qiskit.extensions import UnitaryGate
 
 from qiskit.aqua import aqua_globals
 from qiskit.aqua.components.initial_states import InitialState, Custom
 from qiskit.aqua.components.variational_forms import VariationalForm
-from qiskit.aqua.operators.evolutions import MatrixEvolution
 
-from qiskit.chemistry.fermionic_operator import FermionicOperator
-from qiskit.aqua.operators import WeightedPauliOperator, Z2Symmetries
+from qiskit.chemistry.drivers import PySCFDriver, UnitsType, Molecule
+from qiskit.chemistry.transformations import FermionicTransformation, FermionicQubitMappingType
 
 from g import GGate
 from zx import ZXGate
@@ -21,41 +19,51 @@ import numpy as np
 
 class QOCA(VariationalForm):
     def __init__(self,
-        ferm_operator: Optional[FermionicOperator] = None,
-        num_qubits: Optional[int] = 4,
+        molecule: Molecule = None,
+        driver: PySCFDriver = None,
         reps: int = 1,
         initial_state: Optional[InitialState] = None,
         qubit_mapping: str = 'jordan_wigner') -> None:
         
         super().__init__()
 
-        self._num_qubits = num_qubits
+        if molecule is not None:
+            self._molecule = molecule
+        else:
+            self._molecule = Molecule(geometry=[['Li', [0., 0., 0.]], ['H', [0., 0., 1.6]]], charge=0, multiplicity=1)
+
+        if driver is not None:
+            self._driver = driver
+        else:
+            self._driver = PySCFDriver(molecule = molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
+
+        self._fermionic_op = FermionicTransformation(qubit_mapping = FermionicQubitMappingType.JORDAN_WIGNER, freeze_core = True).transform(self._driver)
+
+        self._qubit_op = self._fermionic_op[0]
+        self._num_qubits = self._qubit_op.num_qubits
         self._reps = reps
+
         if initial_state is None:
-            self._initial_state = Custom(num_qubits, state='uniform')
+            self._initial_state = Custom(self._num_qubits, state='uniform')
         else:
             self._initial_state = initial_state
         self._support_parameterized_circuit = True
 
-        self._num_parameters = 2 * self._num_qubits * self._reps
+        self._num_parameters = (2 * self._num_qubits) * self._reps
         self.parameters = []
         [self.parameters.append(0) for i in range(self._num_parameters)]
         parameters = self.parameters
         self._bounds = [(-np.pi, np.pi) for _ in range(self._num_parameters)]
 
-        if ferm_operator is None:
-            self._ferm_operator = FermionicOperator(h1=None, h2=None)
-        else:
-            self._ferm_operator = ferm_operator
-
-    def add_hamiltonian_layer(self, circuit: QuantumCircuit, fermionic_operator: FermionicOperator):
+    def add_hamiltonian_layer(self, circuit: QuantumCircuit, layer_params: List[Parameter]):
         
-        qubitOp = self._ferm_operator.mapping(map_type = "jordan_wigner", threshold=0.00000001)
-        evol = MatrixEvolution().convert(operator = qubitOp)
-        circuit.append(UnitaryGate(qubitOp, label = None),[0,qubitOp.num_qubits],[])
+        ham_gate = self._qubit_op.exp_i().to_instruction()
+        qarg_list = list(range(0, self._num_qubits))
+        circuit.append(ham_gate,qarg_list,[])
 
         return circuit
     
+# TODO: Update indices for general multilayer case
     def add_drive_layer(self, circuit: QuantumCircuit, layer_params: List[Parameter]):
         
         circuit.ry(layer_params[0],0)
@@ -85,7 +93,7 @@ class QOCA(VariationalForm):
         for layer in range(self._reps):
             layer_end_index = int(self._num_parameters/self._reps)
             layer_params = parameters[(layer*layer_end_index):((layer+1)*layer_end_index)]
-            self.add_hamiltonian_layer(circuit, self._ferm_operator)
+            self.add_hamiltonian_layer(circuit, layer_params)
             self.add_drive_layer(circuit, layer_params)
 
         return circuit
